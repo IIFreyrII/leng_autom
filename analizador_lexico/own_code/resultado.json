@@ -1,0 +1,16 @@
+{
+  "ESPACIO": "[ \t]+",
+  "SALTO_LINEA": "[ \n]+",
+  "COMENTARIO": "#.*",
+  "ID": "[a-zA-Z]1[a-zA-Z0-9]*",
+  "NUM": "[\\d]+",
+  "OP_EQUAL": "=",
+  "OP_ADD": "[+]",
+  "OP_SUB": "-",
+  "OP_MULT": "[*]",
+  "OP_DIV": "/",
+  "OP_POT": "\\^",
+  "OP_ROOT": "\\\\",
+  "PAR_OPEN": "[(]",
+  "PAR_CLOSE": "[)]"
+}

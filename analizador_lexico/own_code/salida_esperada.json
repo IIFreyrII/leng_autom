@@ -1,0 +1,14 @@
+{
+  "token1": {
+    "type": "ID",
+    "value": "x1dsada",
+    "columna": 1,
+    "linea": 1
+  },
+  "toke2": {
+    "type": "NUM",
+    "value": "1231",
+    "columna": 8,
+    "linea": 1
+  }
+}
