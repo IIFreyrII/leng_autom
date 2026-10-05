@@ -1,47 +1,64 @@
-class Pila:
-    """Clase base para el manejo de la pila requerida por el algoritmo"""
-    def __init__(self):
-        self.items = []
+class PilaMemoria:
+    """
+    Simula una pila a bajo nivel (Memoria pre-asignada y Stack Pointer).
+    """
+    def __init__(self, tamaño):
+        self.tamaño = tamaño
+        # Pre-asignamos la "memoria" estática
+        self.memoria = [None] * tamaño 
+        # Puntero de la pila (Stack Pointer - SP). -1 significa que está vacía.
+        self.tope = -1 
 
     def push(self, elemento):
-        self.items.append(elemento)
+        if self.tope >= self.tamaño - 1:
+            raise OverflowError("Stack Overflow: Límite de memoria alcanzado.")
+        self.tope += 1
+        self.memoria[self.tope] = elemento
 
     def pop(self):
-        if not self.is_empty():
-            return self.items.pop()
-        return None
+        if self.tope < 0: # Chequeo del tope en lugar de is_empty()
+            return None
+        elemento = self.memoria[self.tope]
+        # En ensamblador el dato sigue en memoria, pero el puntero decrementa.
+        # Simulamos eso solo moviendo el puntero.
+        self.tope -= 1 
+        return elemento
 
     def peek(self):
-        if not self.is_empty():
-            return self.items[-1]
-        return None
-
-    def is_empty(self):
-        return len(self.items) == 0
+        if self.tope < 0:
+            return None
+        return self.memoria[self.tope]
 
 
-class ConvertidorExpresiones:
+class GestorOperadores:
+    """
+    Responsabilidad: Conocer las reglas de precedencia de los operadores. (SRP y OCP)
+    """
     def __init__(self):
-        self.operadores = {'+': 1, '-': 1, '*': 2, '/': 2}
+        self._operadores = {'+': 1, '-': 1, '*': 2, '/': 2}
 
     def obtener_jerarquia(self, operador):
-        return self.operadores.get(operador, 0)
+        return self._operadores.get(operador, 0)
+    
+    def es_operador(self, token):
+        return token in self._operadores or token in "()"
 
-    def tokenizar(self, expresion):
-        """
-        Separa la expresión en operandos y operadores.
-        Agrupa múltiples dígitos o letras como un solo elemento.
-        Separa letras de números si vienen juntos (ej. 'djeh101' -> 'djeh', '101')
-        """
+
+class AnalizadorLexico:
+    """
+    Responsabilidad: Convertir una cadena de texto cruda en tokens. (SRP)
+    """
+    @staticmethod
+    def tokenizar(expresion):
         tokens = []
         i = 0
         while i < len(expresion):
             c = expresion[i]
-            
+
             if c.isspace():
                 i += 1
                 continue
-                
+
             if c in "+-*/()":
                 tokens.append(c)
                 i += 1
@@ -58,97 +75,90 @@ class ConvertidorExpresiones:
                     i += 1
                 tokens.append(token)
             else:
-                # Si hay caracteres extraños, los ignoramos o saltamos
                 i += 1
-                
+
         return tokens
 
+
+class ConvertidorExpresiones:
+    """
+    Responsabilidad: Ejecutar el algoritmo Shunting Yard (Infijo a Posfijo/Prefijo).
+    Se le inyecta el GestorOperadores cumpliendo con Inversión de Dependencias (DIP).
+    """
+    def __init__(self, gestor_operadores):
+        self.gestor = gestor_operadores
+
     def infijo_a_posfijo(self, tokens, para_prefijo=False):
-        """
-        Convierte de infijo a posfijo aplicando las reglas de precedencia.
-        El parámetro 'para_prefijo' ajusta la asociatividad al reusar el método para prefijo.
-        """
-        pila = Pila()
+        # El tamaño máximo que puede alcanzar la pila es el total de tokens
+        pila = PilaMemoria(len(tokens)) 
         resultado = []
 
         for token in tokens:
-            if token.isalnum(): # Es un operando (dígitos o letras)
+            if not self.gestor.es_operador(token): # Es un operando
                 resultado.append(token)
             elif token == '(':
                 pila.push(token)
             elif token == ')':
-                # Saca hasta encontrar apertura, maneja si hay ')' sobrantes
-                while not pila.is_empty() and pila.peek() != '(':
+                # Usamos pila.tope > -1 para saber si hay elementos, evitando abstracciones
+                while pila.tope > -1 and pila.peek() != '(':
                     resultado.append(pila.pop())
-                if not pila.is_empty() and pila.peek() == '(':
-                    pila.pop() # Saca el '(' y se descarta
-            else: # Es un operador
-                while not pila.is_empty() and pila.peek() != '(':
-                    top = pila.peek()
-                    # Regla de jerarquías explicada en los requerimientos
+                if pila.tope > -1 and pila.peek() == '(':
+                    pila.pop() # Descartamos el '('
+            else: # Es un operador matemático
+                while pila.tope > -1 and pila.peek() != '(':
+                    top_op = pila.peek()
+                    jerarquia_top = self.gestor.obtener_jerarquia(top_op)
+                    jerarquia_token = self.gestor.obtener_jerarquia(token)
+
                     if para_prefijo:
-                        # Para prefijo invertido, necesitamos estricta mayor jerarquía para sacar
-                        if self.obtener_jerarquia(top) > self.obtener_jerarquia(token):
+                        if jerarquia_top > jerarquia_token:
                             resultado.append(pila.pop())
                         else:
                             break
                     else:
-                        # Para posfijo normal, mayor o igual jerarquía saca al de la pila
-                        if self.obtener_jerarquia(top) >= self.obtener_jerarquia(token):
+                        if jerarquia_top >= jerarquia_token:
                             resultado.append(pila.pop())
                         else:
                             break
                 pila.push(token)
 
-        # Vaciar los operadores restantes en la pila
-        while not pila.is_empty():
+        # Vaciar los operadores restantes guiándonos por el tope (Stack Pointer)
+        while pila.tope > -1:
             op = pila.pop()
-            if op != '(': # Si sobraron '(', simplemente no los mandamos al resultado
+            if op != '(': 
                 resultado.append(op)
 
         return resultado
 
     def infijo_a_prefijo(self, tokens):
-        """
-        Convierte de infijo a prefijo reutilizando el método posfijo.
-        1. Invierte la expresión.
-        2. Cambia '(' por ')' y viceversa.
-        3. Pasa por el algoritmo de posfijo.
-        4. Invierte el resultado final.
-        """
         tokens_invertidos = tokens[::-1]
-        
-        tokens_preparados = []
-        for t in tokens_invertidos:
-            if t == '(': tokens_preparados.append(')')
-            elif t == ')': tokens_preparados.append('(')
-            else: tokens_preparados.append(t)
 
-        # Llamada al método posfijo dentro de prefijo
+        # Intercambiar paréntesis
+        tokens_preparados = [
+            ')' if t == '(' else '(' if t == ')' else t 
+            for t in tokens_invertidos
+        ]
+
         resultado_posfijo = self.infijo_a_posfijo(tokens_preparados, para_prefijo=True)
-        
         return resultado_posfijo[::-1]
 
 
 def main():
-    print("CONVERSOR DE EXPRESIONES (Infijo -> Posfijo -> Prefijo)")
+    print("CONVERSOR DE EXPRESIONES (Orientado a objetos - Bajo Nivel)")
     expresion_infija = input("Ingresa la expresión matemática: ").strip()
 
-    # Validación de entrada vacía
     if not expresion_infija:
-        print("\nError: No se ingresaron valores. Debes ingresar una expresión matemática para continuar.")
+        print("\nError: No se ingresaron valores.")
         return
 
-    convertidor = ConvertidorExpresiones()
-    
-    # 1. Tokenización (separar en partes)
-    tokens = convertidor.tokenizar(expresion_infija)
-    
-    # 2. Conversiones
+    # Inyección de dependencias y ensamblaje de la lógica
+    gestor_ops = GestorOperadores()
+    convertidor = ConvertidorExpresiones(gestor_ops)
+
+    tokens = AnalizadorLexico.tokenizar(expresion_infija)
     posfijo = convertidor.infijo_a_posfijo(tokens)
     prefijo = convertidor.infijo_a_prefijo(tokens)
 
-    # 3. Mostrar los 3 resultados y el final
     print("\n--- RESULTADOS ---")
     print(f"1. Infijo original : {' '.join(tokens)}")
     print(f"2. Expresión Posfija: {' '.join(posfijo)}")

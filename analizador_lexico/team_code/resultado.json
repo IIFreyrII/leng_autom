@@ -2,91 +2,121 @@
   "token1": {
     "type": "ID",
     "value": "x1dsadnkl",
-    "linea": 1,
+    "linea": 3,
     "columna": 1
   },
   "token2": {
     "type": "OP_EQUAL",
     "value": "=",
-    "linea": 1,
+    "linea": 3,
     "columna": 11
   },
   "token3": {
     "type": "NUM",
     "value": "123",
-    "linea": 1,
+    "linea": 3,
     "columna": 14
   },
   "token4": {
     "type": "OP_ADD",
     "value": "+",
-    "linea": 1,
+    "linea": 3,
     "columna": 18
   },
   "token5": {
-    "type": "ID",
-    "value": "s1adsd",
-    "linea": 1,
-    "columna": 20
+    "type": "OP_ADD",
+    "value": "+",
+    "linea": 3,
+    "columna": 19
   },
   "token6": {
-    "type": "OP_SUB",
-    "value": "-",
-    "linea": 1,
-    "columna": 27
+    "type": "ID",
+    "value": "s1adsd",
+    "linea": 3,
+    "columna": 21
   },
   "token7": {
-    "type": "NUM",
-    "value": "1233",
-    "linea": 1,
-    "columna": 29
+    "type": "OP_SUB",
+    "value": "-",
+    "linea": 3,
+    "columna": 28
   },
   "token8": {
     "type": "NUM",
-    "value": "31232",
-    "linea": 2,
-    "columna": 1
+    "value": "1233",
+    "linea": 3,
+    "columna": 30
   },
   "token9": {
-    "type": "OP_SUB",
-    "value": "-",
-    "linea": 2,
-    "columna": 7
+    "type": "NUM",
+    "value": "31232",
+    "linea": 4,
+    "columna": 1
   },
   "token10": {
-    "type": "ID",
-    "value": "a1sd1d989",
-    "linea": 2,
-    "columna": 9
+    "type": "OP_SUB",
+    "value": "-",
+    "linea": 4,
+    "columna": 7
   },
   "token11": {
     "type": "ID",
-    "value": "h1ola23",
-    "linea": 2,
-    "columna": 20
+    "value": "a1sd1d989",
+    "linea": 4,
+    "columna": 9
   },
   "token12": {
-    "type": "NUM",
-    "value": "31231",
-    "linea": 3,
-    "columna": 1
+    "type": "ID",
+    "value": "h1ola23",
+    "linea": 4,
+    "columna": 20
   },
   "token13": {
-    "type": "OP_SUB",
-    "value": "-",
-    "linea": 3,
-    "columna": 7
+    "type": "NUM",
+    "value": "31231",
+    "linea": 5,
+    "columna": 1
   },
   "token14": {
-    "type": "ID",
-    "value": "l1dsp10cxs",
-    "linea": 3,
-    "columna": 8
+    "type": "OP_SUB",
+    "value": "-",
+    "linea": 5,
+    "columna": 7
   },
   "token15": {
+    "type": "ID",
+    "value": "l1dsp10cxs",
+    "linea": 5,
+    "columna": 8
+  },
+  "token16": {
+    "type": "ID",
+    "value": "p1recio",
+    "linea": 6,
+    "columna": 1
+  },
+  "token17": {
+    "type": "ID",
+    "value": "x1",
+    "linea": 7,
+    "columna": 1
+  },
+  "token18": {
+    "type": "OP_EQUAL",
+    "value": "=",
+    "linea": 7,
+    "columna": 4
+  },
+  "token19": {
+    "type": "NUM",
+    "value": "23",
+    "linea": 7,
+    "columna": 6
+  },
+  "token20": {
     "type": "EOF",
     "value": null,
-    "linea": 3,
-    "columna": 18
+    "linea": 7,
+    "columna": 8
   }
 }
