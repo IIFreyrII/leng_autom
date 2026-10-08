@@ -1,38 +1,38 @@
 class PilaMemoria:
     """
-    Simula una pila a bajo nivel (memoria pre-asignada y Stack Pointer).
+    Responsabilidad: Simular una pila de capacidad fija.
+    Los atributos son privados: el exterior solo interactúa
+    mediante push, pop, peek, esta_vacia y esta_llena.
     """
-
     def __init__(self, capacidad):
         self._capacidad = capacidad
         # Pre-asignamos la "memoria" estática
         self._memoria = [None] * capacidad
-        self._tope = -1  # Stack Pointer
+        self._tope = -1
 
-    # ---------- Consultas de estado ----------
     def esta_vacia(self):
         return self._tope == -1
 
     def esta_llena(self):
         return self._tope == self._capacidad - 1
 
-    # ---------- Operaciones principales ----------
     def push(self, elemento):
         if self.esta_llena():
-            raise OverflowError("Stack Overflow: Límite de memoria alcanzado.")
+            raise OverflowError("Stack Overflow: la pila está llena.")
         self._tope += 1
         self._memoria[self._tope] = elemento
 
     def pop(self):
         if self.esta_vacia():
-            raise IndexError("Stack Underflow: La pila está vacía.")
+            raise IndexError("Stack Underflow: la pila está vacía.")
         elemento = self._memoria[self._tope]
         self._tope -= 1
         return elemento
 
     def peek(self):
+        """Consulta el elemento del tope sin sacarlo."""
         if self.esta_vacia():
-            raise IndexError("Stack Underflow: La pila está vacía.")
+            raise IndexError("La pila está vacía.")
         return self._memoria[self._tope]
 
 
@@ -42,12 +42,13 @@ class GestorOperadores:
     """
     def __init__(self):
         self._operadores = {'+': 1, '-': 1, '*': 2, '/': 2}
+        self._parentesis = ('(', ')')
 
     def obtener_jerarquia(self, operador):
         return self._operadores.get(operador, 0)
 
     def es_operador(self, token):
-        return token in self._operadores or token in ("(", ")")
+        return token in self._operadores or token in self._parentesis
 
 
 class AnalizadorLexico:
@@ -104,24 +105,21 @@ class ConvertidorExpresiones:
             elif token == ')':
                 while not pila.esta_vacia() and pila.peek() != '(':
                     resultado.append(pila.pop())
-                if not pila.esta_vacia() and pila.peek() == '(':
-                    pila.pop()
+                if not pila.esta_vacia():
+                    pila.pop()  # descarta el '('
             else:
                 while not pila.esta_vacia() and pila.peek() != '(':
-                    top_op = pila.peek()
-                    jerarquia_top = self.gestor.obtener_jerarquia(top_op)
+                    jerarquia_top = self.gestor.obtener_jerarquia(pila.peek())
                     jerarquia_token = self.gestor.obtener_jerarquia(token)
 
                     if para_prefijo:
-                        if jerarquia_top > jerarquia_token:
-                            resultado.append(pila.pop())
-                        else:
-                            break
+                        debe_salir = jerarquia_top > jerarquia_token
                     else:
-                        if jerarquia_top >= jerarquia_token:
-                            resultado.append(pila.pop())
-                        else:
-                            break
+                        debe_salir = jerarquia_top >= jerarquia_token
+
+                    if not debe_salir:
+                        break
+                    resultado.append(pila.pop())
                 pila.push(token)
 
         while not pila.esta_vacia():
@@ -144,22 +142,19 @@ class ConvertidorExpresiones:
 
 
 def main():
-    print("CONVERSOR DE EXPRESIONES (Orientado a objetos - Bajo Nivel)")
+    print("CONVERSOR DE EXPRESIONES (Orientado a objetos)")
     expresion_infija = input("Ingresa la expresión matemática: ").strip()
 
     if not expresion_infija:
-        print("\nError: No se ingresaron valores.")
+        print("\nDebes ingresar una expresión.")
         return
 
-    # 1. Instanciamos todas nuestras clases de forma normal
     gestor_ops = GestorOperadores()
     analizador = AnalizadorLexico()
     convertidor = ConvertidorExpresiones(gestor_ops)
 
-    # 2. Usamos el analizador para obtener los tokens
     tokens = analizador.tokenizar(expresion_infija)
 
-    # 3. Convertimos
     posfijo = convertidor.infijo_a_posfijo(tokens)
     prefijo = convertidor.infijo_a_prefijo(tokens)
 
@@ -167,6 +162,7 @@ def main():
     print(f"1. Infijo original : {' '.join(tokens)}")
     print(f"2. Expresión Posfija: {' '.join(posfijo)}")
     print(f"3. Expresión Prefija: {' '.join(prefijo)}")
+
 
 if __name__ == "__main__":
     main()
