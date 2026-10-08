@@ -1,55 +1,60 @@
 class PilaMemoria:
     """
-    Simula una pila a bajo nivel (Memoria pre-asignada y Stack Pointer).
+    Simula una pila a bajo nivel (memoria pre-asignada y Stack Pointer).
     """
-    def __init__(self, tamaño):
-        self.tamaño = tamaño
-        # Pre-asignamos la "memoria" estática
-        self.memoria = [None] * tamaño 
-        # Puntero de la pila (Stack Pointer - SP). -1 significa que está vacía.
-        self.tope = -1 
 
+    def __init__(self, capacidad):
+        self._capacidad = capacidad
+        # Pre-asignamos la "memoria" estática
+        self._memoria = [None] * capacidad
+        self._tope = -1  # Stack Pointer
+
+    # ---------- Consultas de estado ----------
+    def esta_vacia(self):
+        return self._tope == -1
+
+    def esta_llena(self):
+        return self._tope == self._capacidad - 1
+
+    # ---------- Operaciones principales ----------
     def push(self, elemento):
-        if self.tope >= self.tamaño - 1:
+        if self.esta_llena():
             raise OverflowError("Stack Overflow: Límite de memoria alcanzado.")
-        self.tope += 1
-        self.memoria[self.tope] = elemento
+        self._tope += 1
+        self._memoria[self._tope] = elemento
 
     def pop(self):
-        if self.tope < 0: # Chequeo del tope en lugar de is_empty()
-            return None
-        elemento = self.memoria[self.tope]
-        # En ensamblador el dato sigue en memoria, pero el puntero decrementa.
-        # Simulamos eso solo moviendo el puntero.
-        self.tope -= 1 
+        if self.esta_vacia():
+            raise IndexError("Stack Underflow: La pila está vacía.")
+        elemento = self._memoria[self._tope]
+        self._tope -= 1
         return elemento
 
     def peek(self):
-        if self.tope < 0:
-            return None
-        return self.memoria[self.tope]
+        if self.esta_vacia():
+            raise IndexError("Stack Underflow: La pila está vacía.")
+        return self._memoria[self._tope]
 
 
 class GestorOperadores:
     """
-    Responsabilidad: Conocer las reglas de precedencia de los operadores. (SRP y OCP)
+    Responsabilidad: Conocer las reglas de precedencia de los operadores.
     """
     def __init__(self):
         self._operadores = {'+': 1, '-': 1, '*': 2, '/': 2}
 
     def obtener_jerarquia(self, operador):
         return self._operadores.get(operador, 0)
-    
+
     def es_operador(self, token):
-        return token in self._operadores or token in "()"
+        return token in self._operadores or token in ("(", ")")
 
 
 class AnalizadorLexico:
     """
-    Responsabilidad: Convertir una cadena de texto cruda en tokens. (SRP)
+    Responsabilidad: Convertir una cadena de texto cruda en tokens.
     """
-    @staticmethod
-    def tokenizar(expresion):
+    def tokenizar(self, expresion):
         tokens = []
         i = 0
         while i < len(expresion):
@@ -83,29 +88,26 @@ class AnalizadorLexico:
 class ConvertidorExpresiones:
     """
     Responsabilidad: Ejecutar el algoritmo Shunting Yard (Infijo a Posfijo/Prefijo).
-    Se le inyecta el GestorOperadores cumpliendo con Inversión de Dependencias (DIP).
     """
     def __init__(self, gestor_operadores):
         self.gestor = gestor_operadores
 
     def infijo_a_posfijo(self, tokens, para_prefijo=False):
-        # El tamaño máximo que puede alcanzar la pila es el total de tokens
-        pila = PilaMemoria(len(tokens)) 
+        pila = PilaMemoria(len(tokens))
         resultado = []
 
         for token in tokens:
-            if not self.gestor.es_operador(token): # Es un operando
+            if not self.gestor.es_operador(token):
                 resultado.append(token)
             elif token == '(':
                 pila.push(token)
             elif token == ')':
-                # Usamos pila.tope > -1 para saber si hay elementos, evitando abstracciones
-                while pila.tope > -1 and pila.peek() != '(':
+                while not pila.esta_vacia() and pila.peek() != '(':
                     resultado.append(pila.pop())
-                if pila.tope > -1 and pila.peek() == '(':
-                    pila.pop() # Descartamos el '('
-            else: # Es un operador matemático
-                while pila.tope > -1 and pila.peek() != '(':
+                if not pila.esta_vacia() and pila.peek() == '(':
+                    pila.pop()
+            else:
+                while not pila.esta_vacia() and pila.peek() != '(':
                     top_op = pila.peek()
                     jerarquia_top = self.gestor.obtener_jerarquia(top_op)
                     jerarquia_token = self.gestor.obtener_jerarquia(token)
@@ -122,10 +124,9 @@ class ConvertidorExpresiones:
                             break
                 pila.push(token)
 
-        # Vaciar los operadores restantes guiándonos por el tope (Stack Pointer)
-        while pila.tope > -1:
+        while not pila.esta_vacia():
             op = pila.pop()
-            if op != '(': 
+            if op != '(':
                 resultado.append(op)
 
         return resultado
@@ -133,9 +134,8 @@ class ConvertidorExpresiones:
     def infijo_a_prefijo(self, tokens):
         tokens_invertidos = tokens[::-1]
 
-        # Intercambiar paréntesis
         tokens_preparados = [
-            ')' if t == '(' else '(' if t == ')' else t 
+            ')' if t == '(' else '(' if t == ')' else t
             for t in tokens_invertidos
         ]
 
@@ -151,11 +151,15 @@ def main():
         print("\nError: No se ingresaron valores.")
         return
 
-    # Inyección de dependencias y ensamblaje de la lógica
+    # 1. Instanciamos todas nuestras clases de forma normal
     gestor_ops = GestorOperadores()
+    analizador = AnalizadorLexico()
     convertidor = ConvertidorExpresiones(gestor_ops)
 
-    tokens = AnalizadorLexico.tokenizar(expresion_infija)
+    # 2. Usamos el analizador para obtener los tokens
+    tokens = analizador.tokenizar(expresion_infija)
+
+    # 3. Convertimos
     posfijo = convertidor.infijo_a_posfijo(tokens)
     prefijo = convertidor.infijo_a_prefijo(tokens)
 
