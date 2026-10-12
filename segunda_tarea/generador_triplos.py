@@ -3,32 +3,41 @@ from conversor_expresiones import (
     GestorOperadores,
     AnalizadorLexico,
     ConvertidorExpresiones,
+    EvaluadorPosfijo,
+    pedir_valores,
+    formatear_numero,
 )
-
 
 class GeneradorTriplos:
     """
     Responsabilidad: Convertir una expresión posfija en tríplos
-    (operador, argumento1, argumento2). Cada tríplo se identifica por su
-    índice, y los resultados intermedios se referencian como "(índice)".
+    (operador, argumento1, argumento2, resultado). Cada tríplo se identifica
+    por su índice, y los resultados intermedios se referencian como "(índice)".
+    El valor de cada operación se calcula reutilizando EvaluadorPosfijo.
     """
-    def generar(self, posfijo, destino=None):
+    def __init__(self, gestor_operadores, evaluador):
+        self.gestor = gestor_operadores
+        self.evaluador = evaluador
+
+    def generar(self, posfijo, valores, destino=None):
         triplos = []
+        # Cada elemento de la pila es (referencia, valor)
         pila = PilaMemoria(len(posfijo))
-        operadores = GestorOperadores()
 
         for token in posfijo:
-            if not operadores.es_operador(token):
-                pila.push(token)
+            if not self.gestor.es_operador(token):
+                valor = self.evaluador.obtener_valor(token, valores)
+                pila.push((token, valor))
             else:
-                arg2 = pila.pop()
-                arg1 = pila.pop()
-                triplos.append((token, arg1, arg2))
-                pila.push(f"({len(triplos) - 1})")
+                ref2, valor2 = pila.pop()
+                ref1, valor1 = pila.pop()
+                resultado = self.evaluador.aplicar(token, valor1, valor2)
+                triplos.append((token, ref1, ref2, resultado))
+                pila.push((f"({len(triplos) - 1})", resultado))
 
         if destino is not None:
-            resultado_final = pila.pop()
-            triplos.append(('=', destino, resultado_final))
+            ref_final, valor_final = pila.pop()
+            triplos.append(('=', destino, ref_final, valor_final))
 
         return triplos
 
@@ -38,9 +47,10 @@ class FormateadorTabla:
     Responsabilidad: Presentar los tríplos como tabla de texto.
     """
     def mostrar(self, triplos):
-        print(f"{'Índice':<8}{'Operación':<12}{'Argumento 1':<14}{'Argumento 2':<14}")
-        for i, (op, arg1, arg2) in enumerate(triplos):
-            print(f"{'(' + str(i) + ')':<8}{op:<12}{arg1:<14}{arg2:<14}")
+        print(f"{'Índice':<8}{'Operación':<12}{'Argumento 1':<14}{'Argumento 2':<14}{'Resultado':<12}")
+        for i, (op, arg1, arg2, resultado) in enumerate(triplos):
+            indice = f"({i})"
+            print(f"{indice:<8}{op:<12}{arg1:<14}{arg2:<14}{formatear_numero(resultado):<12}")
 
 
 def separar_asignacion(entrada):
@@ -61,12 +71,23 @@ def main():
 
     destino, expresion = separar_asignacion(entrada)
 
+    gestor_ops = GestorOperadores()
     analizador = AnalizadorLexico()
-    convertidor = ConvertidorExpresiones(GestorOperadores())
+    convertidor = ConvertidorExpresiones(gestor_ops)
+    generador = GeneradorTriplos(gestor_ops, EvaluadorPosfijo(gestor_ops))
 
     tokens = analizador.tokenizar(expresion)
     posfijo = convertidor.infijo_a_posfijo(tokens)
-    triplos = GeneradorTriplos().generar(posfijo, destino)
+
+    try:
+        valores = pedir_valores(tokens, gestor_ops)
+        triplos = generador.generar(posfijo, valores, destino)
+    except ValueError:
+        print("\nLos valores de las variables deben ser numéricos.")
+        return
+    except ZeroDivisionError:
+        print("\nError: división entre cero.")
+        return
 
     print(f"\nPosfijo: {' '.join(posfijo)}\n")
     FormateadorTabla().mostrar(triplos)

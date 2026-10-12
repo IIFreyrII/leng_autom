@@ -141,6 +141,66 @@ class ConvertidorExpresiones:
         return resultado_posfijo[::-1]
 
 
+class EvaluadorPosfijo:
+    """
+    Responsabilidad: Calcular el valor de una expresión posfija usando una pila.
+    Los operandos numéricos se leen directamente; las letras se buscan
+    en el diccionario de valores.
+    """
+    def __init__(self, gestor_operadores):
+        self.gestor = gestor_operadores
+        self._operaciones = {
+            '+': lambda a, b: a + b,
+            '-': lambda a, b: a - b,
+            '*': lambda a, b: a * b,
+            '/': lambda a, b: a / b,
+        }
+
+    def obtener_valor(self, token, valores):
+        """Valor numérico de un operando (dígitos o variable)."""
+        if token.isdigit():
+            return int(token)
+        return valores[token]
+
+    def aplicar(self, operador, izquierdo, derecho):
+        """Aplica un operador a dos valores ya calculados."""
+        return self._operaciones[operador](izquierdo, derecho)
+
+    def evaluar(self, posfijo, valores=None):
+        valores = valores or {}
+        pila = PilaMemoria(len(posfijo))
+
+        for token in posfijo:
+            if not self.gestor.es_operador(token):
+                pila.push(self.obtener_valor(token, valores))
+            else:
+                derecho = pila.pop()
+                izquierdo = pila.pop()
+                pila.push(self.aplicar(token, izquierdo, derecho))
+
+        return pila.pop()
+
+
+def pedir_valores(tokens, gestor):
+    """Pide al usuario el valor de cada variable (letras) de la expresión."""
+    valores = {}
+    for token in tokens:
+        if not gestor.es_operador(token) and not token.isdigit() and token not in valores:
+            texto = input(f"Valor de {token}: ").strip()
+            try:
+                valores[token] = int(texto)
+            except ValueError:
+                valores[token] = float(texto)
+    return valores
+
+
+def formatear_numero(valor):
+    """Muestra 4.0 como 4, pero deja 3.5 igual."""
+    if isinstance(valor, float) and valor.is_integer():
+        return str(int(valor))
+    return str(valor)
+
+
 def main():
     print("CONVERSOR DE EXPRESIONES (Orientado a objetos)")
     expresion_infija = input("Ingresa la expresión matemática: ").strip()
@@ -162,6 +222,15 @@ def main():
     print(f"1. Infijo original : {' '.join(tokens)}")
     print(f"2. Expresión Posfija: {' '.join(posfijo)}")
     print(f"3. Expresión Prefija: {' '.join(prefijo)}")
+
+    try:
+        valores = pedir_valores(tokens, gestor_ops)
+        resultado = EvaluadorPosfijo(gestor_ops).evaluar(posfijo, valores)
+        print(f"4. Resultado        : {formatear_numero(resultado)}")
+    except ValueError:
+        print("\nLos valores de las variables deben ser numéricos.")
+    except ZeroDivisionError:
+        print("\nError: división entre cero.")
 
 
 if __name__ == "__main__":
