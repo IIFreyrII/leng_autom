@@ -159,8 +159,46 @@ def mostrar_arbol(nodo, prefijo="", ultimo=True):
     elif nodo[0] == "VARIABLE":
         print(prefijo + conector + "VARIABLE: " + nodo[1])
 
+# ======================
+# Evaluador / Interprete
+# ======================
+
+class Evaluador:
+    def __init__(self):
+        self.memoria = {}
+
+    def evaluar(self, nodo):
+        tipo = nodo[0]
+
+        if tipo == "ASIGNACION":
+            variable = nodo[1]
+            valor = self.evaluar(nodo[2])
+            self.memoria[variable] = valor
+            return valor
+        elif tipo == "OPERACION":
+            op = nodo[1]
+            izq = self.evaluar(nodo[2])
+            der = self.evaluar(nodo[3])
+
+            if op == "+": return izq + der
+            if op == "-": return izq - der
+            if op == "*": return izq * der
+            if op == "/":
+                if der == 0:
+                    raise ZeroDivisionError("Error de división entre cero")
+                return izq / der
+
+        elif tipo == "NUMERO":
+            return float(nodo[1]) if "." in nodo[1] else int(nodo[1])
+
+        elif tipo == "VARIABLE":
+            var = nodo[1]
+            if var not in self.memoria:
+                raise NameError(f"Variable no definida: {var!r}")
+            return self.memoria[var]
+
 if __name__ == "__main__":
-    print("ANALIZADOR SINTÁCTICO")
+    print("ANALIZADOR Y EVALUADOR")
     print()
 
     codigo = input("Escribe una igualación: ")
@@ -178,6 +216,13 @@ if __name__ == "__main__":
         print("\nSintaxis Correcta")
         print("\nÁRBOL SINTÁCTICO:")
         mostrar_arbol(arbol)
-    except SyntaxError as error:
+
+        # Ejecutamos el evaluador
+        evaluador = Evaluador()
+        resultado = evaluador.evaluar(arbol)
+        print("\nRESULTADO DE LA OPERACIÓN:")
+        print(f"Valor calculado: {resultado}")
+        print(f"Memoria (variables): {evaluador.memoria}")
+    except (SyntaxError, NameError, ZeroDivisionError) as error:
         print("\nERROR SINTÁCTICO")
         print(error)
