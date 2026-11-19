@@ -160,12 +160,42 @@ def mostrar_arbol(nodo, prefijo="", ultimo=True):
         print(prefijo + conector + "VARIABLE: " + nodo[1])
 
 # ======================
+# Analizador Semántico
+# ======================
+
+class AnalizadorSemantico:
+    def __init__(self, tabla_simbolos):
+        self.tabla_simbolos = tabla_simbolos
+
+    def analizar(self, nodo):
+        tipo = nodo[0]
+
+        if tipo == "ASIGNACION":
+            variable = nodo[1]
+            self.analizar(nodo[2])
+            self.tabla_simbolos.add(variable)
+
+        elif tipo == "OPERACION":
+            self.analizar(nodo[2])
+            self.analizar(nodo[3])
+
+        elif tipo == "NUMERO":
+            pass
+
+        elif tipo == "VARIABLE":
+            variable = nodo[1]
+            if variable not in self.tabla_simbolos:
+                raise NameError(f"Error Semántico, la variable {variable} no ha sido declarada")
+
+
+
+# ======================
 # Evaluador / Interprete
 # ======================
 
 class Evaluador:
-    def __init__(self):
-        self.memoria = {}
+    def __init__(self, memoria):
+        self.memoria = memoria
 
     def evaluar(self, nodo):
         tipo = nodo[0]
@@ -201,28 +231,43 @@ if __name__ == "__main__":
     print("ANALIZADOR Y EVALUADOR")
     print()
 
-    codigo = input("Escribe una igualación: ")
+    memoria_valores = {}
+    variables_declaradas = set()
 
-    try:
-        tokens = analizar_lexico(codigo)
-        print("\nTOKENS: ")
-        for tipo, valor in tokens:
-            if tipo != "EOF":
-                print(f"{tipo} : {valor}")
+    while True:
+        codigo = input(">> ")
 
-        analizador = AnalizadorSintactico(tokens)
-        arbol = analizador.analizar()
+        if codigo.lower() == "salir":
+            break
 
-        print("\nSintaxis Correcta")
-        print("\nÁRBOL SINTÁCTICO:")
-        mostrar_arbol(arbol)
+        if not codigo.strip():
+            continue
 
-        # Ejecutamos el evaluador
-        evaluador = Evaluador()
-        resultado = evaluador.evaluar(arbol)
-        print("\nRESULTADO DE LA OPERACIÓN:")
-        print(f"Valor calculado: {resultado}")
-        print(f"Memoria (variables): {evaluador.memoria}")
-    except (SyntaxError, NameError, ZeroDivisionError) as error:
-        print("\nERROR SINTÁCTICO")
-        print(error)
+
+        try:
+            tokens = analizar_lexico(codigo)
+            print("\nTOKENS: ")
+            for tipo, valor in tokens:
+                if tipo != "EOF":
+                    print(f"{tipo} : {valor}")
+
+            analizador = AnalizadorSintactico(tokens)
+            arbol = analizador.analizar()
+
+            print("\nSintaxis Correcta")
+            print("\nÁRBOL SINTÁCTICO:")
+            mostrar_arbol(arbol)
+
+            # Validación Semántica
+            semantico = AnalizadorSemantico(set(memoria_valores))
+            semantico.analizar(arbol)
+
+            # Ejecutamos el evaluador
+            evaluador = Evaluador(memoria_valores)
+            resultado = evaluador.evaluar(arbol)
+            print("\nRESULTADO DE LA OPERACIÓN:")
+            print(f"Valor calculado: {resultado}")
+            print(f"Memoria (variables): {evaluador.memoria}")
+        except (SyntaxError, NameError, ZeroDivisionError) as error:
+            print("\nERROR SINTÁCTICO")
+            print(error)
