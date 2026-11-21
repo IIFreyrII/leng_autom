@@ -187,7 +187,37 @@ class AnalizadorSemantico:
             if variable not in self.tabla_simbolos:
                 raise NameError(f"Error Semántico, la variable {variable} no ha sido declarada")
 
+# ===========================
+# Generador código intermedio
+# ===========================
 
+class GeneradorCodigoIntermedio:
+    def __init__(self):
+        self.cuadruplos = []
+        self.contador_temp = 0
+
+    def nueva_temporal(self):
+        self.contador_temp += 1
+        return f"{self.contador_temp}"
+
+    def generar(self, nodo):
+        tipo = nodo[0]
+
+        if tipo == "NUMERO":
+            return nodo[1]
+        elif tipo == "VARIABLE":
+            return nodo[1]
+        elif tipo == "OPERACION":
+            op = nodo[1]
+            izq = self.generar(nodo[2])
+            der = self.generar(nodo[3])
+            temp = self.nueva_temporal()
+            self.cuadruplos.append((op, izq, der, temp))
+            return temp
+        elif tipo == "ASIGNACION":
+            variable = nodo[1]
+            origen = self.generar(nodo[2])
+            self.cuadruplos.append(("=", origen, "-", variable))
 
 # ======================
 # Evaluador / Interprete
@@ -243,7 +273,6 @@ if __name__ == "__main__":
         if not codigo.strip():
             continue
 
-
         try:
             tokens = analizar_lexico(codigo)
             print("\nTOKENS: ")
@@ -261,6 +290,14 @@ if __name__ == "__main__":
             # Validación Semántica
             semantico = AnalizadorSemantico(set(memoria_valores))
             semantico.analizar(arbol)
+
+            # Generación de cuádruplos
+            gen_inter = GeneradorCodigoIntermedio()
+            gen_inter.generar(arbol)
+
+            print("   CUADRUPLOS   ")
+            for idx, cuad in enumerate(gen_inter.cuadruplos, 1):
+                print(f"    {idx}. {cuad}")
 
             # Ejecutamos el evaluador
             evaluador = Evaluador(memoria_valores)
