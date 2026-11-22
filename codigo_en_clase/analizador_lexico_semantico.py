@@ -352,7 +352,7 @@ if __name__ == "__main__":
             try:
                 ejecutar_linea(codigo, memoria_valores)
             except (SyntaxError, NameError, ZeroDivisionError, ValueError) as error:
-                print("\nERROR")
+                print("\nError")
                 print(error)
 
     elif opcion == "2":
