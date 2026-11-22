@@ -1,0 +1,5 @@
+asdadsdasd = 2 +3
+# asdasdasda
+/*asdads 
+asdasddas 
+asdasd*/ x = 7*4

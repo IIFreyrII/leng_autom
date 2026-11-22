@@ -1,16 +1,26 @@
+# Integrantes del equipo:
+# Freyre Can Bryan Paul
+# Silva Colli Odalys Margely
+# Borges Gonzalez Jose Manuel
+# Camas Pool Jesús Emilio
+
 import re
+
 # ==================
 # Analizador Léxico
 # ==================
+
 PATRON = re.compile(
     r"(?P<ESPACIO>\s+)"
+    r"|(?P<COMENTARIO_MULTI>/\*[\s\S]*?\*/)"
+    r"|(?P<COMENTARIO_LINEA>#.*)"
     r"|(?P<NUMERO>\d+(?:\.\d+)?)"
-    r"|(?P<IDENTIFICADOR>[a-zA-Z_]\w*)"
-    r"|(?P<OPERADOR>[=+\-*/()])"
+    r"|(?P<IDENTIFICADOR>[a-zA-Z]\w*)"
+    r"|(?P<OPERADOR>[=+\-*/^\\()])"
 )
 
 def analizar_lexico(codigo):
-    tokens=[]
+    tokens = []
     posicion = 0
 
     while posicion < len(codigo):
@@ -23,11 +33,11 @@ def analizar_lexico(codigo):
         tipo = coincidencia.lastgroup
         valor = coincidencia.group()
 
-        if tipo != "ESPACIO":
-            tokens.append((tipo,valor))
+        if tipo not in ("ESPACIO", "COMENTARIO_LINEA", "COMENTARIO_MULTI"):
+            tokens.append((tipo, valor))
 
         posicion = coincidencia.end()
-    tokens.append(("EOF",""))
+    tokens.append(("EOF", ""))
     return tokens
 
 # ======================
@@ -48,8 +58,6 @@ class AnalizadorSintactico:
             self.posicion += 1
             return token
         return None
-
-    # Si devuelve un None, significa que no está definido el token
 
     def esperar(self, valor):
         token = self.aceptar(valor)
@@ -87,7 +95,7 @@ class AnalizadorSintactico:
         nombre = self.esperar_tipo("IDENTIFICADOR")[1]
         self.esperar("=")
         expresion = self.expresion()
-        return("ASIGNACION",nombre,expresion)
+        return ("ASIGNACION", nombre, expresion)
 
     def expresion(self):
         nodo = self.termino()
@@ -95,24 +103,37 @@ class AnalizadorSintactico:
         while self.actual()[1] in ("+", "-"):
             operador = self.actual()[1]
             self.posicion += 1
-
             derecho = self.termino()
-
             nodo = ("OPERACION", operador, nodo, derecho)
 
         return nodo
 
     def termino(self):
-        nodo = self.factor()
+        nodo = self.potencia()
 
         while self.actual()[1] in ("*", "/"):
+            operador = self.actual()[1]
+            self.posicion += 1
+            derecho = self.potencia()
+            nodo = ("OPERACION", operador, nodo, derecho)
+        return nodo
+
+    def potencia(self):
+        nodo = self.factor()
+
+        while self.actual()[1] in ("^", "\\"):
             operador = self.actual()[1]
             self.posicion += 1
             derecho = self.factor()
             nodo = ("OPERACION", operador, nodo, derecho)
         return nodo
+
     def factor(self):
         tipo, valor = self.actual()
+
+        if self.aceptar("-"):
+            nodo = self.factor()
+            return ("OPERACION", "*", ("NUMERO", "-1"), nodo)
 
         if tipo == "NUMERO":
             self.posicion += 1
@@ -120,7 +141,7 @@ class AnalizadorSintactico:
 
         if tipo == "IDENTIFICADOR":
             self.posicion += 1
-            return("VARIABLE", valor)
+            return ("VARIABLE", valor)
 
         if self.aceptar("("):
             nodo = self.expresion()
@@ -247,6 +268,18 @@ class Evaluador:
                 if der == 0:
                     raise ZeroDivisionError("Error de división entre cero")
                 return izq / der
+            if op == "^":
+                if izq == 0 and der < 0:
+                    raise ZeroDivisionError("Error de división entre cero en potencia negativa")
+                return izq ** der
+            if op == "\\":
+                if der == 0:
+                    raise ZeroDivisionError("Error: el índice de la raíz no puede ser cero")
+                if izq < 0:
+                    if der % 2 == 0:
+                        raise ValueError("Error: no existen raíces pares de números negativos")
+                    return -((-izq) ** (1 / der))
+                return izq ** (1 / der)
 
         elif tipo == "NUMERO":
             return float(nodo[1]) if "." in nodo[1] else int(nodo[1])
@@ -257,54 +290,104 @@ class Evaluador:
                 raise NameError(f"Variable no definida: {var!r}")
             return self.memoria[var]
 
+def ejecutar_linea(codigo, memoria_valores):
+    tokens = analizar_lexico(codigo)
+    if len(tokens) == 1 and tokens[0][0] == "EOF":
+        return
+
+    print("\nTOKENS: ")
+    for tipo, valor in tokens:
+        if tipo != "EOF":
+            print(f"{tipo} : {valor}")
+
+    analizador = AnalizadorSintactico(tokens)
+    arbol = analizador.analizar()
+
+    print("\nSintaxis Correcta")
+    print("\nÁRBOL SINTÁCTICO:")
+    mostrar_arbol(arbol)
+
+    # Validación Semántica
+    semantico = AnalizadorSemantico(set(memoria_valores))
+    semantico.analizar(arbol)
+
+    # Generación de cuádruplos
+    gen_inter = GeneradorCodigoIntermedio()
+    gen_inter.generar(arbol)
+
+    print("   CUADRUPLOS   ")
+    for idx, cuad in enumerate(gen_inter.cuadruplos, 1):
+        print(f"    {idx}. {cuad}")
+
+    # Ejecutamos el evaluador
+    evaluador = Evaluador(memoria_valores)
+    resultado = evaluador.evaluar(arbol)
+    print("\nRESULTADO DE LA OPERACIÓN:")
+    print(f"Valor calculado: {resultado}")
+    print(f"Memoria (variables): {evaluador.memoria}")
+
+# =====================
+# Ejecutamos el código
+# =====================
+
 if __name__ == "__main__":
-    print("ANALIZADOR Y EVALUADOR")
-    print()
+    print("ANALIZADOR Y EVALUADOR\n")
+    print("1. Modo terminal")
+    print("2. Modo archivo")
+    print("Escribe \"salir\" para salir\n")
+    opcion = input("Selecciona una opción: ")
 
     memoria_valores = {}
-    variables_declaradas = set()
 
-    while True:
-        codigo = input(">> ")
+    if opcion == "1":
+        while True:
+            codigo = input("\n>> ")
 
-        if codigo.lower() == "salir":
-            break
+            if codigo.lower() == "salir":
+                break
 
-        if not codigo.strip():
-            continue
+            if not codigo.strip():
+                continue
 
+            try:
+                ejecutar_linea(codigo, memoria_valores)
+            except (SyntaxError, NameError, ZeroDivisionError, ValueError) as error:
+                print("\nERROR")
+                print(error)
+
+    elif opcion == "2":
+        nombre_archivo = "analizar.txt"
         try:
-            tokens = analizar_lexico(codigo)
-            print("\nTOKENS: ")
-            for tipo, valor in tokens:
-                if tipo != "EOF":
-                    print(f"{tipo} : {valor}")
+            with open(nombre_archivo, "r") as archivo:
+                en_comentario = False
+                for numero_linea, linea in enumerate(archivo, start=1):
+                    linea = linea.strip()
+                    if not linea:
+                        continue
 
-            analizador = AnalizadorSintactico(tokens)
-            arbol = analizador.analizar()
+                    if en_comentario:
+                        if "*/" in linea:
+                            linea = linea.split("*/", 1)[1].strip()
+                            en_comentario = False
+                            if not linea:
+                                continue
+                        else:
+                            continue
 
-            print("\nSintaxis Correcta")
-            print("\nÁRBOL SINTÁCTICO:")
-            mostrar_arbol(arbol)
+                    if "/*" in linea and "*/" not in linea:
+                        linea = linea.split("/*", 1)[0].strip()
+                        en_comentario = True
+                        if not linea:
+                            continue
 
-            # Validación Semántica
-            semantico = AnalizadorSemantico(set(memoria_valores))
-            semantico.analizar(arbol)
+                    print(f"\n Línea {numero_linea}: {linea} ")
+                    try:
+                        ejecutar_linea(linea, memoria_valores)
+                    except (SyntaxError, NameError, ZeroDivisionError, ValueError) as error:
+                        print(f"\nError en línea : {numero_linea}")
+                        print(error)
 
-            # Generación de cuádruplos
-            gen_inter = GeneradorCodigoIntermedio()
-            gen_inter.generar(arbol)
-
-            print("   CUADRUPLOS   ")
-            for idx, cuad in enumerate(gen_inter.cuadruplos, 1):
-                print(f"    {idx}. {cuad}")
-
-            # Ejecutamos el evaluador
-            evaluador = Evaluador(memoria_valores)
-            resultado = evaluador.evaluar(arbol)
-            print("\nRESULTADO DE LA OPERACIÓN:")
-            print(f"Valor calculado: {resultado}")
-            print(f"Memoria (variables): {evaluador.memoria}")
-        except (SyntaxError, NameError, ZeroDivisionError) as error:
-            print("\nERROR SINTÁCTICO")
-            print(error)
+                if en_comentario:
+                    print("\nError: Comentario multilínea sin cerrar")
+        except FileNotFoundError:
+            print(f"Error: No se encontró el archivo: {nombre_archivo}")

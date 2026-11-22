@@ -8,7 +8,7 @@ tokens = {
     'ESPACIO':      '[ \t]+',               #Así se especifican espaciones según la documentación de Python, el + es para que acepte 1 o más veces
     'SALTO_LINEA':  '[ \n]+',               #Así se especifican saltos de línea según la documentación de Python, el + es para que acepte 1 o más veces
     'COMENTARIO':    '#.*',                 #El punto es para que acepte cualquier caracter, y el asterisco es para que acepte 0 o más veces después del sharp
-    'ID':         r'[a-zA-Z]1[\w]*',
+    'ID':         r'[a-zA-Z]\w*',
     'NUM':        r'[\d]+',
     'OP_EQUAL':   '=',
     'OP_ADD':     '[+]',
