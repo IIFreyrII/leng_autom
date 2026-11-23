@@ -15,7 +15,7 @@ PATRON = re.compile(
     r"|(?P<COMENTARIO_MULTI>/\*[\s\S]*?\*/)"
     r"|(?P<COMENTARIO_LINEA>#.*)"
     r"|(?P<NUMERO>\d+(?:\.\d+)?)"
-    r"|(?P<IDENTIFICADOR>[a-zA-Z]\w*)"
+    r"|(?P<IDENTIFICADOR>[a-zA-Z][a-zA-Z0-9_-]*)"
     r"|(?P<OPERADOR>[=+\-*/^\\()])"
 )
 
